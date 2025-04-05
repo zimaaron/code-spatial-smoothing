@@ -74,11 +74,17 @@ sub.bound <- splancs::as.points(matrix(c(15000, 25000, 25000, 15000, 15000,
 
 ## OPTION 3:
 ## list of mechanisms that relate to ligands of interest
-l.of.interest <- c('Wnt4', 'Wnt5a', 'Bmp4', 'Il17', 'Il17b','Angptl4','Igf1')
+# l.of.interest <- c('Wnt4', 'Wnt5a', 'Bmp4', 'Il17', 'Il17b','Angptl4','Igf1')
 ## ligands for grant, grab all receptors from hierarchy, subset to those available in data
-load(file.path(i.d, "fantom-hierarchy.Robj"))
-hier <- as.data.table(output)
-hier.s <- subset(hier, LIGAND %in% toupper(l.of.interest))
+# load(file.path(i.d, "fantom-hierarchy.Robj"))
+# hier <- as.data.table(output)
+# hier.s <- subset(hier, LIGAND %in% toupper(l.of.interest))
+
+## load data from sam
+load(file.path(c.d, "features.to.use.2025-04-04.Robj"))
+f.to.mod <- to.use$gene
+
+
 
 # prediction grid resolution (same in x and y)
 # TODO, different x and y resolutions

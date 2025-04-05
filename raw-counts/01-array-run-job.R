@@ -24,15 +24,6 @@ setwd("~/Dropbox/genetics/a-s-omics/")
 ##########################################################
 source("./code-spatial-smoothing/raw-counts/00-load-pkg-set-io-set-params.R")
 
-run.lr.joint <- TRUE
-run.lr.indep <- !run.lr.joint
-
-run.lr.joint.nonlinear <- TRUE
-if(run.lr.joint.nonlinear){
-  run.lr.joint <- F
-  run.lr.indep <- F
-}
-
 #######################
 ## load data, subset ##
 #######################
@@ -50,16 +41,7 @@ if(!is.null(sub.bound)){
 domain <- boundary.coords |> fmesher::fm_segm()
 
 ## subset to hierarchy mechanisms
-sub.dat[, feat := toupper(feat)]
-keep.l <- hier.s[, .(LIGAND)] |> unlist()
-keep.l <- which(keep.l %in% sub.dat[, feat])
-keep.r <- hier.s[, .(RECEPTOR)] |> unlist()
-keep.r <- which(keep.r %in% sub.dat[, feat])
-keep.idx <- intersect(keep.l, keep.r) # keep mechanisms with both lig and rec in dataset
-hier.s <- hier.s[keep.idx, ]
-
-m.to.mod <- hier.s[, MECHANISM]
-m.to.mod <- gsub("_", "-", m.to.mod)
+sub.dat <- sub.dat[feat %in% f.to.mod, ]
 
 ########################################
 ## make mesh (params from set-params) ##
@@ -88,136 +70,18 @@ in.dom <- which(splancs::inout(mesh$loc[, 1:2], ds1))
 ########################################
 ## run model across selected features ##
 ########################################
-if(run.lr.indep){
-  for(lr.n in c(l.to.mod, r.to.mod)){
-    #for(lr.n in c('Mdk', 'Itgb1', 'Igf2', 'Igf2r', 'Igf1r', 'Lrp1')){
 
-    cat('\n\n\n')
-    for(i in 1:3){print(glue('ON FEAT: {lr.n}: {which(c(l.to.mod, r.to.mod) == lr.n)} of {length(c(l.to.mod, r.to.mod))}\n'))}
-    cat('\n\n\n')
+for(lr.n in f.to.mod){
 
-    # make data for this run
-    run.dat <- sub.dat[feat == lr.n, ]
-    set(run.dat, j = "feat.present", value = as.integer(run.dat[, feat.present]))
-    set(run.dat, j = "total.present", value = as.integer(run.dat[, total.present]))
+  cat('\n\n\n')
+  for(i in 1:3){print(glue('ON FEAT: {lr.n}: {which(f.to.mod==lr.n)} of {length(f.to.mod)}\n'))}
+  cat('\n\n\n')
 
-    ## # plot feature and total
-    ## par(mfrow = c(1, 2))
-    ## fields::quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count],
-    ##                    main = glue('{lr.n}'))
-    ## fields::quilt.plot(run.dat[, x], run.dat[, y], run.dat[, total.count],
-    ##                    main = 'Total')
-    ## par(mfrow = c(1, 1))
+  # make data for this run
+  run.dat <- sub.dat[feat == lr.n, ]
+  set(run.dat, j = "feat.present", value = as.integer(run.dat[, feat.present]))
+  set(run.dat, j = "total.present", value = as.integer(run.dat[, total.present]))
 
-    # run the model
-    source(file.path(c.d, "02-array-run-model.R"))
-  }
+  # run the model
+  source(file.path(c.d, "02-array-run-model.R"))
 }
-
-
-
-if(run.lr.joint){
-
-  ## check if the mechanism has data for both lig and recep, otherwise
-  ## remove it from the list
-  bad.m <- as.character();
-  for(lr.n in m.to.mod){;
-    l.n <- strsplit(lr.n, "-")[[1]][1];
-    r.n <- strsplit(lr.n, "-")[[1]][2];
-    l.run.dat.n <- sub.dat[feat == l.n, .N];
-    r.run.dat.n <- sub.dat[feat == r.n, .N];
-    if(l.run.dat.n == 0 | r.run.dat.n == 0){;
-      bad.m <- c(bad.m, lr.n);
-    };
-  };
-  m.to.mod <- setdiff(m.to.mod, bad.m);
-
-
-  # subset to relevant data and run
-  for(lr.n in m.to.mod){
-
-
-    cat('\n\n\n');
-    for(i in 1:3){print(glue('ON FEAT: {lr.n}: {which(m.to.mod == lr.n)} of {length(m.to.mod)}\n'))};
-    cat('\n\n\n');
-
-    l.n <- strsplit(lr.n, "-")[[1]][1];
-    r.n <- strsplit(lr.n, "-")[[1]][2];
-
-    l.run.dat <- sub.dat[feat == l.n, ];
-    set(l.run.dat, j = "feat.present", value = as.integer(l.run.dat[, feat.present]));
-    set(l.run.dat, j = "total.present", value = as.integer(l.run.dat[, total.present]));
-    setnames(l.run.dat,
-             c("feat", "feat.count", "feat.observed", "feat.present"),
-             c("feat.l", "feat.l.count", "feat.l.observed", "feat.l.present"));
-    r.run.dat <- sub.dat[feat == r.n, .(x, y, feat, feat.count, feat.observed, feat.present)];
-    set(r.run.dat, j = "feat.present", value = as.integer(r.run.dat[, feat.present]));
-    setnames(r.run.dat,
-             c("feat", "feat.count", "feat.observed", "feat.present"),
-             c("feat.r", "feat.r.count", "feat.r.observed", "feat.r.present"));
-    run.dat <- merge(l.run.dat, r.run.dat, by = c("x", "y"));
-
-    source(file.path(c.d, "02-array-run-model.R"))
-  }
-}
-
-if(run.lr.joint.nonlinear){
-
-  ## check if the mechanism has data for both lig and recep, otherwise
-  ## remove it from the list
-  bad.m <- as.character();
-  for(lr.n in m.to.mod){;
-    l.n <- strsplit(lr.n, "-")[[1]][1];
-    r.n <- strsplit(lr.n, "-")[[1]][2];
-    l.run.dat.n <- sub.dat[feat == l.n, .N];
-    r.run.dat.n <- sub.dat[feat == r.n, .N];
-    if(l.run.dat.n == 0 | r.run.dat.n == 0){;
-      bad.m <- c(bad.m, lr.n);
-    };
-  };
-  m.to.mod <- setdiff(m.to.mod, bad.m);
-
-
-  # subset to relevant data and run
-  for(lr.n in m.to.mod){
-
-
-    cat('\n\n\n');
-    for(i in 1:3){print(glue('ON FEAT: {lr.n}: {which(m.to.mod == lr.n)} of {length(m.to.mod)}\n'))};
-    cat('\n\n\n');
-
-    l.n <- strsplit(lr.n, "-")[[1]][1];
-    r.n <- strsplit(lr.n, "-")[[1]][2];
-
-    l.run.dat <- sub.dat[feat == l.n, ];
-    set(l.run.dat, j = "feat.present", value = as.integer(l.run.dat[, feat.present]));
-    set(l.run.dat, j = "total.present", value = as.integer(l.run.dat[, total.present]));
-    setnames(l.run.dat,
-             c("feat", "feat.count", "feat.observed", "feat.present"),
-             c("feat.l", "feat.l.count", "feat.l.observed", "feat.l.present"));
-    r.run.dat <- sub.dat[feat == r.n, .(x, y, feat, feat.count, feat.observed, feat.present)];
-    set(r.run.dat, j = "feat.present", value = as.integer(r.run.dat[, feat.present]));
-    setnames(r.run.dat,
-             c("feat", "feat.count", "feat.observed", "feat.present"),
-             c("feat.r", "feat.r.count", "feat.r.observed", "feat.r.present"));
-    run.dat <- merge(l.run.dat, r.run.dat, by = c("x", "y"));
-
-    source(file.path(c.d, "02-array-run-model-nonlinear.R"))
-  }
-}
-
-
-## # plot feature and total
-## par(mfrow = c(1, 2))
-## fields::quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count],
-##                    main = glue('{lr.n}'))
-## fields::quilt.plot(run.dat[, x], run.dat[, y], run.dat[, total.count],
-##                    main = 'Total')
-## par(mfrow = c(1, 1))
-
-# run the model
-
-###############
-## save outs ##
-###############
-## outputs saved in array-run-model.R

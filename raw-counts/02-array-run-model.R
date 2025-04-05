@@ -7,443 +7,334 @@
 qp.res.x <- run.dat[, length(unique(x))]
 qp.res.y <- run.dat[, length(unique(y))]
 
-dir.create(file.path(o.d, "prediction-objects")) # dir for outputs
+## dir.create(file.path(o.d, "prediction-objects")) # dir for model fit objects
+dir.create(file.path(o.d, "fitted-models")) # dir for prediction outputs
 
-####################################
-##
-## Run LR independently
-##
-#####################################
 
-if(run.lr.indep){
-
-  ############################
-  ## setup spde matern
-  ############################
-  matern.total <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
-                                      constr = TRUE, # integrate-to-zero constraint
-                                      prior.range = matern.pri.total[1:2],
-                                      prior.sigma = matern.pri.total[3:4])
-  matern.feat.count <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
+############################
+## setup spde matern
+############################
+matern.remain <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
+                                     constr = TRUE, # integrate-to-zero constraint
+                                     prior.range = matern.pri.total[1:2],
+                                     prior.sigma = matern.pri.total[3:4])
+matern.feat.count <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
+                                         constr = TRUE, # integrate-to-zero constraint
+                                         prior.range = matern.pri.feat.count[1:2],
+                                         prior.sigma = matern.pri.feat.count[3:4])
+## TODO, tune this prior? it's hard with the 0s and 1s areas in space
+## and the logit transform
+matern.feat.present <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
                                            constr = TRUE, # integrate-to-zero constraint
-                                           prior.range = matern.pri.feat.count[1:2],
-                                           prior.sigma = matern.pri.feat.count[3:4])
-  ## TODO, tune this prior? it's hard with the 0s and 1s areas in space
-  ## and the logit transform
-  matern.feat.present <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
-                                             constr = TRUE, # integrate-to-zero constraint
-                                             prior.range = matern.pri.feat.present[1:2],
-                                             prior.sigma = matern.pri.feat.present[3:4])
-
-  ############################
-  ## define the objects needed for dual ZIP and ZAP models
-  ############################
-  ## define all the components in the model
-  zip.comps <- ~
-    total.count.int(1) +
-    total.count.field(cbind(x, y), model = matern.total) +
-    feat.count.int(1) +
-    feat.count.field(cbind(x, y), model = matern.feat.count) #+
-  #feat.present.int(1) +
-  #feat.present.field(cbind(x, y), model = matern.feat.present)
-  ## Poisson model for aggregated/binned data total counts. no zeros for
-  ## 50+ bin sizes and very few for 25
-  total.count.pois.l <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = total.count ~ total.count.int + total.count.field ,
-    E = 1
-  )
-  ## Poisson model for aggregated/binned data at large bin size, with minimal zeros in total!
-  feat.count.pois.l <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = feat.count ~ {
-      eta.feat.rate.per.count <- feat.count.int + feat.count.field
-      eta.E.count   <- total.count.int + total.count.field
-      # feat.rate = feat.rate.per.count*count
-      # eta.feat = log(feat.rate) = log(feat.rate.per.count) + log(count)
-      eta.feat <- eta.feat.rate.per.count + eta.E.count
-      eta.feat
-    },
-    E = 1
-  )
-  # tweaking to include feat counts in total
-  total.count.pois.l2 <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = total.count ~ total.count.int + total.count.field + feat.count.int + feat.count.field,
-    E = 1
-  )
-  ## Poisson model for aggregated/binned data at large bin size, with minimal zeros in total!
-  feat.count.pois.l2 <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = feat.count ~ {
-      eta.feat <- feat.count.int + feat.count.field
-      eta.feat
-    },
-    E = 1
-  )
-  ## #### Feature-only ZIP model (used alone when not also modeling total counts)
-  ## feat.only.count.zip.l <- bru_obs(
-  ##   family = "zeroinflatedpoisson1",
-  ##   data = run.dat,
-  ##   formula = feat.count ~ feat.count.int + feat.count.field,
-  ##   E = 1
-  ## )
-  ## #### ZIP model specification for feature
-  ## feat.count.zip.l <- bru_obs(
-  ##   family = "zeroinflatedpoisson1",
-  ##   data = run.dat,
-  ##   formula = feat.count ~ {
-  ##     eta.feat.rate.per.count <- feat.count.int + feat.count.field
-  ##     eta.E.count   <- total.count.int + total.count.field
-  ##     # feat.rate = feat.rate.per.count*count
-  ##     # eta.feat = log(feat.rate) = log(feat.rate.per.count) + log(count)
-  ##     eta.feat <- eta.feat.rate.per.count + eta.E.count
-  ##     eta.feat
-  ##   },
-  ##   E = 1
-  ## )
-  ## #### ZAP model specification for feature ####
-  ## ## first for ZAP, the truncated poisson
-  ## feat.count.zap.l <- bru_obs(
-  ##   family = "nzpoisson",
-  ##   data = run.dat[feat.present == TRUE, ], # among non-zero data
-  ##   formula = feat.count ~ {
-  ##     eta.feat.rate.per.count <- feat.count.int + feat.count.field
-  ##     eta.E.count   <- total.count.int + total.count.field
-  ##     # feat.rate = feat.rate.per.count*count
-  ##     # eta.feat = log(feat.rate) = log(feat.rate.per.count) + log(count)
-  ##     eta.feat <- eta.feat.rate.per.count + eta.E.count
-  ##     eta.feat
-  ##   },
-  ##   E = 1
-  ## )
-  ## ## second for ZAP, the binary presence model
-  ## feat.present.zap.l <-  bru_obs(
-  ##   family = "binomial",
-  ##   data = run.dat,
-  ##   formula = feat.present ~ feat.present.int + feat.present.field
-  ## )
-  ###########################
-  ## poisson-poisson model ##
-  ###########################
-  cat('\n')
-  for(i in 1){print(glue('-- fitting model'))}
-  cat('\n')
-
-  fit.pois.pois <- bru(
-    # all model components
-    zip.comps,
-    # total counts lik
-    total.count.pois.l,
-    # feature lik
-    feat.count.pois.l,
-    # options
-    options = list(bru_verbose = 4,
-                   bru_max_iter = 1
-                   )
-  )
-  # adding feat field into total explicitly
-  fit.pois.pois2 <- bru(
-    # all model components
-    zip.comps,
-    # total counts lik
-    total.count.pois.l2,
-    # feature lik
-    feat.count.pois.l2,
-    # options
-    options = list(bru_verbose = 4,
-                   bru_max_iter = 1
-                   )
-  )
-  cat('\n')
-  for(i in 1){print(glue('-- predicting from fitted model'))}
-  cat('\n')
-  # TODO save draws, use generate()
-  pred.pois.pois <- predict(
-    fit.pois.pois,
-    run.dat,
-    ~ {
-      eta.E.count   <- total.count.int + total.count.field
-      eta.feat.rate.per.count <- feat.count.int + feat.count.field
-
-      # feat.rate = feat.rate.per.count*count
-      # eta.feat = log(feat.rate) = log(feat.rate.per.count) + log(count)
-      eta.feat <- eta.feat.rate.per.count + eta.E.count
-      list(total = exp(eta.E.count),
-           #total.obs.prob = NULL, # TODO
-           feat.density.per.count = exp(eta.feat.rate.per.count),
-           feat = exp(eta.feat)#,
-           #feat.var = NULL, # TODO
-           #feat.obs.prob = NULL # TODO
-           )
-    },
-    n.samples = 100
-  )
-  pred.pois.pois2 <- predict(
-    fit.pois.pois2,
-    run.dat,
-    ~ {
-      eta.E.count   <- total.count.int + total.count.field + feat.count.int + feat.count.field
-      eta.feat <- feat.count.int + feat.count.field
-
-      list(total = exp(eta.E.count),
-           #total.obs.prob = NULL, # TODO
-           feat.density.per.count = exp(eta.feat) / exp(eta.E.count),
-           feat = exp(eta.feat)#,
-           #feat.var = NULL, # TODO
-           #feat.obs.prob = NULL # TODO
-           )
-    },
-    n.samples = 100
-  )
-  cat('\n')
-  for(i in 1){print(glue('-- saving outputs'))}
-  cat('\n')
-  saveRDS(pred.pois.pois, file = file.path(o.d, "prediction-objects",
-                                           glue('pred-pois-pois-{lr.n}.rds')))
-
-  #pdf(file.path(o.d, 'data-vs-model-pois-pois.pdf'), width = 13, height = 7)
-
-  png(file.path(o.d, glue('data-vs-model-pois-pois-{lr.n}2.png')),
-      width = (qp.res.x / qp.res.y) * 13 + 8, height = 13, units = 'in', res = 300)
-  par(mfrow = c(3, 3),
-      mai = c(.62, 0.82, .62, 1.22))
-  fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count],
-                            main = glue('Observed {lr.n} Counts'),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x, cex = 1.4)
-  fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count / total.count],
-                            main = glue('Observed {lr.n} Counts per Total Counts'),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, total.count],
-                            main = 'Total Counts',
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  fields.style();quilt.plot(pred.pois.pois$feat[, x],
-                            pred.pois.pois$feat[, y],
-                            pred.pois.pois$feat[, mean],
-                            main = glue('Estimated {lr.n} Counts' ),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  fields.style();quilt.plot(pred.pois.pois$feat[, x],
-                            pred.pois.pois$feat[, y],
-                            pred.pois.pois$feat.density.per.count[, mean],
-                            main = glue('Estimated {lr.n} Counts per Total Counts' ),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  fields.style();quilt.plot(pred.pois.pois$total[, x],
-                            pred.pois.pois$total[, y],
-                            pred.pois.pois$total[, mean],
-                            main = glue('Estimated Total Counts'),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  if(!('feat.count' %in% colnames(pred.pois.pois$feat))){
-    pred.pois.pois$feat <-
-      merge(pred.pois.pois$feat,
-            run.dat[, .(x, y, feat.count, total.count)])
-  }
-  fields.style();quilt.plot(pred.pois.pois$feat[, x],
-                            pred.pois.pois$feat[, y],
-                            pred.pois.pois$feat[, feat.count] - pred.pois.pois$feat[, mean],
-                            main = glue('Residual {lr.n} Counts' ),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  fields.style();quilt.plot(pred.pois.pois$feat[, x],
-                            pred.pois.pois$feat[, y],
-                            pred.pois.pois$feat[, feat.count / total.count] -
-                              pred.pois.pois$feat.density.per.count[, mean],
-                            main = glue('Residual {lr.n} Counts per Total Counts' ),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  fields.style();quilt.plot(pred.pois.pois$total[, x],
-                            pred.pois.pois$total[, y],
-                            pred.pois.pois$feat[, total.count] - pred.pois.pois$total[, mean],
-                            main = glue('Residual Total Counts' ),
-                            nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  dev.off()
-
-  # clean up
-  rm(run.dat, fit.pois.pois, pred.pois.pois);gc()
-}
+                                           prior.range = matern.pri.feat.present[1:2],
+                                           prior.sigma = matern.pri.feat.present[3:4])
 
 
-####################################
-##
-## Run LR jointly
-##
-#####################################
+############################
+## define the objects needed for dual ZIP and ZAP models
+############################
+## define all the components in the model
+zip.comps <- ~
+  remain.count.int(1) +
+  remain.count.field(cbind(x, y), model = matern.remain) +
+  feat.count.int(1) +
+  feat.count.field(cbind(x, y), model = matern.feat.count)
 
-if(run.lr.joint){
+total.count.pois <- bru_obs(
+  family = 'poisson',
+  data = run.dat,
+  formula = total.count ~ {
+    # linear predictors for lig, feat, and remainder
+    eta.feat <- feat.count.int + feat.count.field
+    eta.remain <- remain.count.int + remain.count.field
+    # they are additive for the total on the count scale
+    total.rate <- exp(eta.remain) + exp(eta.feat)
+    # but we must specify the log-linked lin pred
+    eta.total <- log(total.rate)
+    eta.total
+  },
+  E = 1)
 
-  ############################
-  ## setup spde matern
-  ############################
-  matern.total <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
-                                      constr = TRUE, # integrate-to-zero constraint
-                                      prior.range = matern.pri.total[1:2],
-                                      prior.sigma = matern.pri.total[3:4])
-  matern.feat.count <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
-                                           constr = TRUE, # integrate-to-zero constraint
-                                           prior.range = matern.pri.feat.count[1:2],
-                                           prior.sigma = matern.pri.feat.count[3:4])
-  ## TODO, tune this prior? it's hard with the 0s and 1s areas in space
-  ## and the logit transform
-  matern.feat.present <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
-                                             constr = TRUE, # integrate-to-zero constraint
-                                             prior.range = matern.pri.feat.present[1:2],
-                                             prior.sigma = matern.pri.feat.present[3:4])
+## Ligand Poisson model for aggregated/binned data at large bin size, with minimal zeros in total!
+feat.count.pois <- bru_obs(
+  family = 'poisson',
+  data = run.dat,
+  formula = feat.count ~ {
+    eta.feat <- feat.count.int + feat.count.field
+    eta.feat
+  },
+  E = 1)
 
+###########################
+## poisson-poisson model ##
+###########################
+cat('\n')
+for(i in 1){print(glue('-- fitting model'))}
+cat('\n')
 
-  ############################
-  ## define the objects needed for dual ZIP and ZAP models
-  ############################
-  ## define all the components in the model
-  zip.comps <- ~
-    total.count.int(1) +
-    total.count.field(cbind(x, y), model = matern.total) +
-    feat.l.count.int(1) +
-    feat.l.count.field(cbind(x, y), model = matern.feat.count) +
-    feat.r.count.int(1) +
-    feat.r.count.field(cbind(x, y), model = matern.feat.count)
-  #feat.present.int(1) +
-  #feat.present.field(cbind(x, y), model = matern.feat.present)
-  ## Poisson model for aggregated/binned data total counts. no zeros for
-  ## 50+ bin sizes and very few for 25
-  total.count.pois <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = total.count ~ total.count.int + total.count.field +
-      feat.l.count.int + feat.l.count.field +
-      feat.r.count.int + feat.r.count.field,
-    E = 1
-  )
-  ## Ligand Poisson model for aggregated/binned data at large bin size, with minimal zeros in total!
-  feat.l.count.pois <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = feat.l.count ~ {
-      eta.l.feat <- feat.l.count.int + feat.l.count.field
-      eta.l.feat
-    },
-    E = 1
-  )
-  ## Receptor Poisson model for aggregated/binned data at large bin size
-  feat.r.count.pois <- bru_obs(
-    family = 'poisson',
-    data = run.dat,
-    formula = feat.r.count ~ {
-      eta.r.feat <- feat.r.count.int + feat.r.count.field
-      eta.r.feat
-    },
-    E = 1
-  )
-  ###########################
-  ## poisson-poisson model ##
-  ###########################
-  cat('\n')
-  for(i in 1){print(glue('-- fitting model'))}
-  cat('\n')
+fit.pois.pois <- bru(
+  # all model components
+  zip.comps,
+  # total counts lik
+  total.count.pois,
+  # ligand lik
+  feat.count.pois,
+  # options
+  options = list(bru_verbose = 4,
+                 bru_max_iter = 1
+                 )
+)
 
-  fit.pois.pois <- bru(
-    # all model components
-    zip.comps,
-    # total counts lik
-    total.count.pois,
-    # ligand lik
-    feat.l.count.pois,
-    #receptor lik
-    feat.r.count.pois,
-    # options
-    options = list(bru_verbose = 4,
-                   bru_max_iter = 1
-                   )
-  )
-  cat('\n')
-  for(i in 1){print(glue('-- predicting from fitted model'))}
-  cat('\n')
-  # TODO save draws, use generate()
-  pred.pois.pois <- predict(
-    fit.pois.pois,
-    run.dat,
-    ~ {
-      total   <- exp(total.count.int + total.count.field +
-                       feat.l.count.int + feat.l.count.field +
-                       feat.r.count.int + feat.r.count.field)
-      feat.l <- exp(feat.l.count.int + feat.l.count.field)
-      feat.r <- exp( feat.r.count.int + feat.r.count.field)
+cat('\n')
+for(i in 1){print(glue('-- predicting from fitted model'))}
+cat('\n')
+# TODO save draws, use generate()
+pred.pois.pois <- predict(
+  fit.pois.pois,
+  run.dat,
+  ~ {
 
-      list(total = total,
-           #total.obs.prob = NULL, # TODO
-           feat.l = feat.l ,
-           feat.r = feat.r ,
-           feat.l.density.per.count = feat.l / total,
-           feat.r.density.per.count = feat.r / total
-           #feat.var = NULL, # TODO
-           #feat.obs.prob = NULL # TODO
-           )},
-    n.samples = 100
-  )
-  cat('\n')
-  for(i in 1){print(glue('-- saving outputs'))}
-  cat('\n')
-  saveRDS(pred.pois.pois, file = file.path(o.d, "prediction-objects",
-                                           glue('pred-pois-pois-{lr.n}.rds')))
+    # linear predictors for lig, feat, and remainder
+    eta.feat <- feat.count.int + feat.count.field
+    eta.remain <- remain.count.int + remain.count.field
 
-  #pdf(file.path(o.d, 'data-vs-model-pois-pois.pdf'), width = 13, height = 7)
+    # rates for lig, feat, and remainder
+    feat <- exp(eta.feat)
+    remain <- exp(eta.remain)
+    # they are additive for the total on the count scale
+    total <- feat + remain
 
-  ## png(file.path(o.d, glue('data-vs-model-pois-pois-{lr.n}.png')),
-  ##     width = (qp.res.x / qp.res.y) * 13 + 8, height = 13, units = 'in', res = 300)
-  ## par(mfrow = c(3, 3),
-  ##     mai = c(.62, 0.82, .62, 1.22))
-  ## fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count],
-  ##                           main = glue('Observed {lr.n} Counts'),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x, cex = 1.4)
-  ## fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count / total.count],
-  ##                           main = glue('Observed {lr.n} Counts per Total Counts'),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, total.count],
-  ##                           main = 'Total Counts',
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## fields.style();quilt.plot(pred.pois.pois$feat[, x],
-  ##                           pred.pois.pois$feat[, y],
-  ##                           pred.pois.pois$feat[, mean],
-  ##                           main = glue('Estimated {lr.n} Counts' ),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## fields.style();quilt.plot(pred.pois.pois$feat[, x],
-  ##                           pred.pois.pois$feat[, y],
-  ##                           pred.pois.pois$feat.density.per.count[, mean],
-  ##                           main = glue('Estimated {lr.n} Counts per Total Counts' ),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## fields.style();quilt.plot(pred.pois.pois$total[, x],
-  ##                           pred.pois.pois$total[, y],
-  ##                           pred.pois.pois$total[, mean],
-  ##                           main = glue('Estimated Total Counts'),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## if(!('feat.count' %in% colnames(pred.pois.pois$feat))){
-  ##   pred.pois.pois$feat <-
-  ##     merge(pred.pois.pois$feat,
-  ##           run.dat[, .(x, y, feat.count, total.count)])
-  ## }
-  ## fields.style();quilt.plot(pred.pois.pois$feat[, x],
-  ##                           pred.pois.pois$feat[, y],
-  ##                           pred.pois.pois$feat[, feat.count] - pred.pois.pois$feat[, mean],
-  ##                           main = glue('Residual {lr.n} Counts' ),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## fields.style();quilt.plot(pred.pois.pois$feat[, x],
-  ##                           pred.pois.pois$feat[, y],
-  ##                           pred.pois.pois$feat[, feat.count / total.count] -
-  ##                             pred.pois.pois$feat.density.per.count[, mean],
-  ##                           main = glue('Residual {lr.n} Counts per Total Counts' ),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## fields.style();quilt.plot(pred.pois.pois$total[, x],
-  ##                           pred.pois.pois$total[, y],
-  ##                           pred.pois.pois$feat[, total.count] - pred.pois.pois$total[, mean],
-  ##                           main = glue('Residual Total Counts' ),
-  ##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-  ## dev.off()
+    list(total = total,
+         #total.obs.prob = NULL, # TODO
+         feat = feat,
+         feat.density.per.count = feat / total,
+         #feat.var = NULL, # TODO
+         #feat.obs.prob = NULL # TODO
+         )},
+  n.samples = 100
+)
 
-  # clean up
-  rm(run.dat, fit.pois.pois, pred.pois.pois);gc()
+cat('\n')
+for(i in 1){print(glue('-- saving outputs'))}
+cat('\n')
+## saving each fit objects takes up about 2gb!
+## saveRDS(fit.pois.pois, file = file.path(o.d, "fitted-models",
+##                                         glue('fit-pois-pois-{lr.n}.rds')))
+saveRDS(pred.pois.pois, file = file.path(o.d, "prediction-objects",
+                                         glue('pred-pois-pois-{lr.n}.rds')))
+
+# clean up
+rm(run.dat, fit.pois.pois, pred.pois.pois);gc()
 
 
-}
+## TODO: CRPS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## ## get the CRPS as in:
+## ## https://inlabru-org.github.io/inlabru/articles/prediction_scores.html
+## # some large value, so that 1-F(K) is small
+## pred <- generate(fit.pois.pois, run.dat,
+
+##                  formula = ~ {
+
+##                    # linear predictors for lig, feat, and remainder
+##                    eta.l.feat <- feat.l.count.int + feat.l.count.field
+##                    eta.r.feat <- feat.r.count.int + feat.r.count.field
+##                    eta.remain <- remain.count.int + remain.count.field
+
+##                    # rates for lig, feat, and remainder
+##                    lambda.feat.l <- exp(feat.l.count.int + feat.l.count.field)
+##                    lambda.feat.r <- exp(feat.r.count.int + feat.r.count.field)
+##                    lambda.remain <- exp(remain.count.int + remain.count.field)
+##                    # they are additive for the total on the count scale
+##                    lambda.total <- lambda.feat.l + lambda.feat.r + lambda.remain
+
+##                    # grab the observations
+##                    feat.l.count <- run.dat[, feat.l.count]
+##                    feat.r.count <- run.dat[, feat.r.count]
+##                    total.count  <- run.dat[, total.count]
+
+##                    # max Ks to evaluate
+##                    max.K.l <- max(feat.l.count) + 4 * sqrt(max(feat.l.count))
+##                    max.K.r <- max(feat.r.count) + 4 * sqrt(max(feat.r.count))
+##                    max.K.t <- max(total.count)  + 4 * sqrt(max(total.count))
+##                    k.l <- seq(0, max.K.l)
+##                    k.r <- seq(0, max.K.r)
+##                    k.t <- seq(0, max.K.t)
+
+##                    crps.l.df <- do.call(
+##                      cbind,
+##                      lapply(
+##                        seq_along(feat.l.count),
+##                        function(i) {
+##                          Fpred <- ppois(k.l, lambda = lambda.feat.l[i])
+##                          data.frame(
+##                            k = c(k.l, k.l),
+##                            i = c(i, i),
+##                            type = rep(c("F", "residual"), each = length(Fpred)),
+##                            value = c(Fpred, Fpred - (feat.l.count[i] <= k.l))
+##                          )
+##                        }
+##                      )
+##                    )
+
+##                    crps.r.df <- do.call(
+##                      cbind,
+##                      lapply(
+##                        seq_along(feat.r.count),
+##                        function(i) {
+##                          Fpred <- ppois(k.r, lambda = lambda.feat.r[i])
+##                          data.frame(
+##                            k = c(k.r, k.r),
+##                            i = c(i, i),
+##                            type = rep(c("F", "residual"), each = length(Fpred)),
+##                            value = c(Fpred, Fpred - (feat.r.count[i] <= k.r))
+##                          )
+##                        }
+##                      )
+##                    )
+
+##                    crps.t.df <- do.call(
+##                      rbind, # this was cbind in the inlabru code
+##                      lapply(
+##                        seq_along(total.count),
+##                        function(i) {
+##                          Fpred <- ppois(k.t, lambda = lambda.total[i])
+##                          data.frame(
+##                            k = c(k.t, k.t),
+##                            i = c(i, i),
+##                            type = rep(c("F", "residual"), each = length(Fpred)),
+##                            value = c(Fpred, Fpred - (total.count[i] <= k.t))
+##                          )
+##                        }
+##                      )
+##                    )
+
+##                    # return list of everything we want
+##                    list(lambda.total = lambda.total,
+##                         #total.obs.prob = NULL, # TODO
+##                         lambda.remain = lambda.remain,
+##                         lambda.feat.l = lambda.feat.l,
+##                         lambda.feat.r = lambda.feat.r,
+##                         lambda.feat.l.density.per.count = lambda.feat.l / lambda.total,
+##                         lambda.feat.r.density.per.count = lambda.feat.r / lambda.total,
+##                         crps.l = crps.l.df,
+##                         crps.r = crps.r.df,
+##                         crps.t = crps.t.df
+##                         #feat.var = NULL, # TODO
+##                         #feat.obs.prob = NULL # TODO
+##                         )
+##                  },
+##                  n.samples = 5
+##                  )
+
+## ## restructure pred pieces by type, instead of pieces by draw
+## pred.l <- list()
+## pred.l[['lambda.total']] <- do.call('cbind',
+##                                     lapply(pred,
+##                                            function(x){
+##                                              x$lambda.total}))
+## pred.l[['lambda.remain']] <- do.call('cbind',
+##                                      lapply(pred,
+##                                             function(x){
+##                                               x$lambda.remain}))
+## pred.l[['lambda.feat.l']] <- do.call('cbind',
+##                                      lapply(pred,
+##                                             function(x){
+##                                               x$lambda.feat.l}))
+## pred.l[['lambda.feat.r']] <- do.call('cbind',
+##                                      lapply(pred,
+##                                             function(x){
+##                                               x$lambda.feat.r}))
+## pred.l[['lambda.feat.l.density.per.count']] <- do.call('cbind',
+##                                                        lapply(pred,
+##                                                               function(x){
+##                                                                 x$lambda.feat.l.density.per.count}))
+## pred.l[['lambda.feat.r.density.per.count']] <- do.call('cbind',
+##                                                        lapply(pred,
+##                                                               function(x){
+##                                                                 x$lambda.feat.r.density.per.count}))
+## pred.l[['crps.t']] <- lapply()
+
+
+
+## F.est.l <-
+##   (pred.dt %>%
+##      filter(type == "F") %>%
+##      group_by(i) %>%
+##      summarise(F = sum(mean), groups = "drop") %>%
+##      pull("F"))
+## crps.score.l <-
+##   (pred$crps.l %>%
+##      filter(type == "residual") %>%
+##      group_by(i) %>%
+##      summarise(crps = sum(mean^2), groups = "drop") %>%
+##      pull(crps))
+## # Check that the cutoff point K has nearly probability mass 1 below it,
+## # for all i:
+## min(F_estimate)
+
+
+## END OF CRPS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## OLDER CODE BELOW - aoz april 2025
+
+#pdf(file.path(o.d, 'data-vs-model-pois-pois.pdf'), width = 13, height = 7)
+
+## png(file.path(o.d, glue('data-vs-model-pois-pois-{lr.n}.png')),
+##     width = (qp.res.x / qp.res.y) * 13 + 8, height = 13, units = 'in', res = 300)
+## par(mfrow = c(3, 3),
+##     mai = c(.62, 0.82, .62, 1.22))
+## fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count],
+##                           main = glue('Observed {lr.n} Counts'),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x, cex = 1.4)
+## fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count / total.count],
+##                           main = glue('Observed {lr.n} Counts per Total Counts'),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## fields.style();quilt.plot(run.dat[, x], run.dat[, y], run.dat[, total.count],
+##                           main = 'Total Counts',
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## fields.style();quilt.plot(pred.pois.pois$feat[, x],
+##                           pred.pois.pois$feat[, y],
+##                           pred.pois.pois$feat[, mean],
+##                           main = glue('Estimated {lr.n} Counts' ),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## fields.style();quilt.plot(pred.pois.pois$feat[, x],
+##                           pred.pois.pois$feat[, y],
+##                           pred.pois.pois$feat.density.per.count[, mean],
+##                           main = glue('Estimated {lr.n} Counts per Total Counts' ),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## fields.style();quilt.plot(pred.pois.pois$total[, x],
+##                           pred.pois.pois$total[, y],
+##                           pred.pois.pois$total[, mean],
+##                           main = glue('Estimated Total Counts'),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## if(!('feat.count' %in% colnames(pred.pois.pois$feat))){
+##   pred.pois.pois$feat <-
+##     merge(pred.pois.pois$feat,
+##           run.dat[, .(x, y, feat.count, total.count)])
+## }
+## fields.style();quilt.plot(pred.pois.pois$feat[, x],
+##                           pred.pois.pois$feat[, y],
+##                           pred.pois.pois$feat[, feat.count] - pred.pois.pois$feat[, mean],
+##                           main = glue('Residual {lr.n} Counts' ),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## fields.style();quilt.plot(pred.pois.pois$feat[, x],
+##                           pred.pois.pois$feat[, y],
+##                           pred.pois.pois$feat[, feat.count / total.count] -
+##                             pred.pois.pois$feat.density.per.count[, mean],
+##                           main = glue('Residual {lr.n} Counts per Total Counts' ),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## fields.style();quilt.plot(pred.pois.pois$total[, x],
+##                           pred.pois.pois$total[, y],
+##                           pred.pois.pois$feat[, total.count] - pred.pois.pois$total[, mean],
+##                           main = glue('Residual Total Counts' ),
+##                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+## dev.off()
+
+## # clean up
+## rm(run.dat, fit.pois.pois, pred.pois.pois);gc()
+
+
 ## ########################
 ## ## feature only model ##
 ## ########################
