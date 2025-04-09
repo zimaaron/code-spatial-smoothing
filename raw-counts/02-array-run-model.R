@@ -34,36 +34,46 @@ matern.feat.present <- inla.spde2.pcmatern(mesh=mesh, alpha = 2,
 ## define the objects needed for dual ZIP and ZAP models
 ############################
 ## define all the components in the model
-zip.comps <- ~
-  remain.count.int(1) +
-  remain.count.field(cbind(x, y), model = matern.remain) +
+comps <- ~
+  #  total.count.int(1) +
+  #  total.count.field(cbind(x, y), model = matern.feat.present) +
+  #  feat.present.int(1) +
+  #  feat.present.field(cbind(x, y), model = matern.feat.present) +
   feat.count.int(1) +
   feat.count.field(cbind(x, y), model = matern.feat.count)
 
-total.count.pois <- bru_obs(
-  family = 'poisson',
+total.lik <- bru_obs(
+  family = "poisson",
   data = run.dat,
-  formula = total.count ~ {
-    # linear predictors for lig, feat, and remainder
-    eta.feat <- feat.count.int + feat.count.field
-    eta.remain <- remain.count.int + remain.count.field
-    # they are additive for the total on the count scale
-    total.rate <- exp(eta.remain) + exp(eta.feat)
-    # but we must specify the log-linked lin pred
-    eta.total <- log(total.rate)
-    eta.total
-  },
-  E = 1)
+  formula = total.count ~ total.count.int + total.count.field,
+  E = 1
+)
 
-## Ligand Poisson model for aggregated/binned data at large bin size, with minimal zeros in total!
-feat.count.pois <- bru_obs(
-  family = 'poisson',
+## truncated.feat.lik <- bru_obs(
+##   family = "nzpoisson",
+##   data = run.dat[feat.count > 0, ],
+##   # feat.count.lambda  = exp(feat.count.eta)*total.count.lambda
+##   # feat.count.lambda  = exp(feat.count.eta)*exp(total.count.eta)
+##   # feat.count.lambda = exp(feat.count.eta + total.count.eta)
+##   formula = feat.count ~ feat.count.int + feat.count.field, #+ total.count.int + total.count.field,
+##   E = total.count
+## )
+
+feat.lik <- bru_obs(
+  family = "poisson",
   data = run.dat,
-  formula = feat.count ~ {
-    eta.feat <- feat.count.int + feat.count.field
-    eta.feat
-  },
-  E = 1)
+  # feat.count.lambda  = exp(feat.count.eta)*total.count.lambda
+  # feat.count.lambda  = exp(feat.count.eta)*exp(total.count.eta)
+  # feat.count.lambda = exp(feat.count.eta + total.count.eta)
+  formula = feat.count ~ feat.count.int + feat.count.field, #+ total.count.int + total.count.field,
+  E = total.count
+)
+
+present.feat.lik <- bru_obs(
+  family = "binomial",
+  data = run.dat,
+  formula = feat.present ~ feat.present.int + feat.present.field
+)
 
 ###########################
 ## poisson-poisson model ##
@@ -72,13 +82,15 @@ cat('\n')
 for(i in 1){print(glue('-- fitting model'))}
 cat('\n')
 
-fit.pois.pois <- bru(
+fit <- bru(
   # all model components
-  zip.comps,
+  comps,
   # total counts lik
-  total.count.pois,
-  # ligand lik
-  feat.count.pois,
+  #  total.lik,
+  # feat non-zero lik
+  feat.lik,
+  # feat presence lik
+  # present.feat.lik,
   # options
   options = list(bru_verbose = 4,
                  bru_max_iter = 1
@@ -89,28 +101,14 @@ cat('\n')
 for(i in 1){print(glue('-- predicting from fitted model'))}
 cat('\n')
 # TODO save draws, use generate()
-pred.pois.pois <- predict(
-  fit.pois.pois,
+pred <- predict(
+  fit,
   run.dat,
   ~ {
 
-    # linear predictors for lig, feat, and remainder
-    eta.feat <- feat.count.int + feat.count.field
-    eta.remain <- remain.count.int + remain.count.field
-
-    # rates for lig, feat, and remainder
-    feat <- exp(eta.feat)
-    remain <- exp(eta.remain)
-    # they are additive for the total on the count scale
-    total <- feat + remain
-
-    list(total = total,
-         #total.obs.prob = NULL, # TODO
-         feat = feat,
-         feat.density.per.count = feat / total,
-         #feat.var = NULL, # TODO
-         #feat.obs.prob = NULL # TODO
-         )},
+    feat.lambda <- exp(feat.count.int + feat.count.field) * total.count
+    feat.lambda
+  },
   n.samples = 100
 )
 

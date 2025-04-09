@@ -125,3 +125,22 @@ if(plot.preds){
     dev.off()
   }
 }
+
+
+qp.res.x <- run.dat[, length(unique(x))]
+qp.res.y <- run.dat[, length(unique(y))]
+png(file.path(o.d,  glue('test.png')),
+    width = 14, height = 7, units = 'in', res = 300)
+par(mfrow = c(1, 2),
+    mai = c(.62, 0.82, .62, 1.22))
+fields.style();quilt.plot(run.dat[, x],
+                          run.dat[, y],
+                          run.dat[, feat.count],
+                          main = glue('observed {lr.n} counts' ),
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(run.dat[, x],
+                          run.dat[, y],
+                          pred$mean,
+                          main = glue('Estimated {lr.n} Counts' ),
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+dev.off()
