@@ -84,21 +84,11 @@ sub.bound <- splancs::as.points(matrix(c(15000, 25000, 25000, 15000, 15000,
 load(file.path(c.d, "features.to.use.2025-04-04.Robj"))
 f.to.mod <- to.use$gene
 
+f.to.drop <- c("a")
+f.to.mod <- setdiff(f.to.mod, f.to.drop)
 
 
 # prediction grid resolution (same in x and y)
 # TODO, different x and y resolutions
 # Not currently used
 pred.grid.res <- 200
-
-## ---------
-## SCRIPT 02
-## ---------
-
-## prior matern params
-## c(a, b, c, d), where
-## P(sp.range < a) = b
-## P(sp.sigma > c) = d
-matern.pri.total <- c(2000, .95, 1, .05) ## a, b, c, d
-matern.pri.feat.count <- c(1000, .95, 2, .05) ## a, b, c, d
-matern.pri.feat.present <- c(1000, .95, 100, .05) ## a, b, c, d

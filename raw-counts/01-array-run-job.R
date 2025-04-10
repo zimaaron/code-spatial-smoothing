@@ -1,4 +1,3 @@
-
 ## this script is intended to be used to within an array job setting
 ##
 ## each job will receive a different integer index and each job should
@@ -23,6 +22,11 @@ setwd("~/Dropbox/genetics/a-s-omics/")
 ## set user selected params, in/out dirs, and load pkgs ##
 ##########################################################
 source("./code-spatial-smoothing/raw-counts/00-load-pkg-set-io-set-params.R")
+
+# pick one
+poi.mod <- TRUE#FALSE
+zip.mod <- TRUE
+zap.mod <- TRUE#FALSE
 
 #######################
 ## load data, subset ##
@@ -81,6 +85,11 @@ for(lr.n in f.to.mod){
   run.dat <- sub.dat[feat == lr.n, ]
   set(run.dat, j = "feat.present", value = as.integer(run.dat[, feat.present]))
   set(run.dat, j = "total.present", value = as.integer(run.dat[, total.present]))
+
+  if(FALSE){
+    fields::quilt.plot(run.dat[, x], run.dat[, y], run.dat[, feat.count],
+                       nx = run.dat[, length(unique(x))], ny = run.dat[, length(unique(y))])
+  }
 
   # run the model
   source(file.path(c.d, "02-array-run-model.R"))
