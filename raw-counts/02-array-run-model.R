@@ -353,6 +353,8 @@ cat('\n')
 for(i in 1){print(glue('-- making plots'))}
 cat('\n')
 
+## first make plots with constant color range per column
+
 prob.zlim <- c(0, 1)
 prob.cols <- (magma(256))
 
@@ -368,7 +370,7 @@ res.zlim <- c(run.dat$feat.count - pred.poi$expect$mean, run.dat$feat.count - pr
               run.dat$feat.count - pred.zap$expect$mean) |> range()
 res.cols <- turbo(256)
 
-png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons.png')),
+png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-fixed-colors.png')),
     width = (qp.res.x / qp.res.y) * 4 / 3 * 13 + 8, height = 4 / 3 * 13, units = 'in', res = 300)
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
@@ -465,8 +467,122 @@ fields.style();quilt.plot(run.dat$x,
                           main = glue('{lr.n} - Data -  Counts'),
                           zlim = cnt.zlim, nlevel = 256, col = cnt.cols,
                           nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
-plot.new()
+
+fields.style();quilt.plot(run.dat$x,
+                          run.dat$y,
+                          run.dat[, total.count],
+                          main = glue('{Data -  NUMI'),
+                          nlevel = 256, col = res.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
 dev.off()
+
+
+png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-free-colors.png')),
+    width = (qp.res.x / qp.res.y) * 4 / 3 * 13 + 8, height = 4 / 3 * 13, units = 'in', res = 300)
+par(mfrow = c(4, 4),
+    mai = c(.62, 0.82, .62, 1.22))
+fields.style();quilt.plot(pred.poi$expect$x,
+                          pred.poi$expect$y,
+                          1 - dpois(0, pred.poi$expect$mean),
+                          main = glue('{lr.n} - Poisson - Estimated Prob of Occurence'),
+                          nlevel = 256, col = prob.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.poi$lambda$x,
+                          pred.poi$lambda$y,
+                          pred.poi$lambda$mean,
+                          main = glue('{lr.n} - Poisson - Estimated Density'),
+                          nlevel = 256, col = dens.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.poi$expect$x,
+                          pred.poi$expect$y,
+                          pred.poi$expect$mean,
+                          main = glue('{lr.n} - Poisson - Estimated Count'),
+                          nlevel = 256, col = cnt.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.poi$expect$x,
+                          pred.poi$expect$y,
+                          run.dat$feat.count - pred.poi$expect$mean,
+                          main = glue('{lr.n} - Poisson - Count Residuals'),
+                          nlevel = 256, col = res.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+
+fields.style();quilt.plot(pred.zip$expect$x,
+                          pred.zip$expect$y,
+                          1 - dpois(0, pred.zip$expect$mean),
+                          main = glue('{lr.n} - ZIP - Estimated Prob of Occurence'),
+                          nlevel = 256, col = prob.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.zip$lambda$x,
+                          pred.zip$lambda$y,
+                          pred.zip$lambda$mean,
+                          main = glue('{lr.n} - ZIP - Estimated Density'),
+                          nlevel = 256, col = dens.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.zip$expect$x,
+                          pred.zip$expect$y,
+                          pred.zip$expect$mean,
+                          main = glue('{lr.n} - ZIP - Estimated Count'),
+                          nlevel = 256, col = cnt.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.zip$expect$x,
+                          pred.zip$expect$y,
+                          run.dat$feat.count - pred.zip$expect$mean,
+                          main = glue('{lr.n} - ZIP - Count Residuals'),
+                          nlevel = 256, col = res.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+
+fields.style();quilt.plot(pred.zap$expect$x,
+                          pred.zap$expect$y,
+                          1 - dpois(0, pred.zap$expect$mean),
+                          main = glue('{lr.n} - ZAP - Estimated Prob of Occurence'),
+                          nlevel = 256, col = prob.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.zap$lambda$x,
+                          pred.zap$lambda$y,
+                          pred.zap$lambda$mean,
+                          main = glue('{lr.n} - ZAP - Estimated Density'),
+                          nlevel = 256, col = dens.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.zap$expect$x,
+                          pred.zap$expect$y,
+                          pred.zap$expect$mean,
+                          main = glue('{lr.n} - ZAP - Estimated Count'),
+                          nlevel = 256, col = cnt.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(pred.zap$expect$x,
+                          pred.zap$expect$y,
+                          run.dat$feat.count - pred.zap$expect$mean,
+                          main = glue('{lr.n} - ZAP - Count Residuals'),
+                          nlevel = 256, col = res.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+
+fields.style();quilt.plot(run.dat$x,
+                          run.dat$y,
+                          run.dat$feat.present,
+                          main = glue('{lr.n} - Data - Prob of Occurence'),
+                          nlevel = 256, col = prob.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(run.dat$x,
+                          run.dat$y,
+                          run.dat[, feat.count / total.count],
+                          main = glue('{lr.n} - Data -  Density'),
+                          nlevel = 256, col = dens.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(run.dat$x,
+                          run.dat$y,
+                          run.dat[, feat.count],
+                          main = glue('{lr.n} - Data -  Counts'),
+                          nlevel = 256, col = cnt.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+fields.style();quilt.plot(run.dat$x,
+                          run.dat$y,
+                          run.dat[, total.count],
+                          main = glue('{Data -  NUMI'),
+                          nlevel = 256, col = res.cols,
+                          nx = qp.res.x, ny = qp.res.y, asp = qp.res.y / qp.res.x)
+dev.off()
+
+
 
 ## poi.p.d <-  ggplot() +
 ##   geom_fm(data = mesh) +
@@ -528,13 +644,13 @@ dev.off()
 fwrite(scores, file = file.path(o.d, glue("{lr.n}-scores.csv")))
 
 saveRDS(pred.poi, file = file.path(o.d, "prediction-objects",
-                                   glue('pred-poi-{lr.n}.rds')))
+                                   glue('{lr.n}-pred-poi.rds')))
 
 saveRDS(pred.zip, file = file.path(o.d, "prediction-objects",
-                                    glue('pred-zip-{lr.n}.rds')))
+                                    glue('{lr.n}-pred-zip.rds')))
 
 saveRDS(pred.zap, file = file.path(o.d, "prediction-objects",
-                                    glue('pred-zap-{lr.n}.rds')))
+                                    glue('{lr.n}-pred-zap.rds')))
 
 
 # clean up
