@@ -2,6 +2,9 @@
 ##
 ## each job will receive a different integer index and each job should
 ## use that index to process a different slice of data
+
+## source("~/Dropbox/genetics/a-s-omics/code-spatial-smoothing/raw-counts/01-array-run-job.R")
+
 setwd("~/Dropbox/genetics/a-s-omics/")
 
 ##################
