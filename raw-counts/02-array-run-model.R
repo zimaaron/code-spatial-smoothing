@@ -123,7 +123,7 @@ if(poi.mod){
   )
 
   if(!is.na(fit.poi)){
-    poi_pit <- fit.poi$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)],
+    poi_pit <- fit.poi$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     poi_pit <- NA
   }
@@ -225,7 +225,7 @@ if(zip.mod){
   )
 
   if(!is.na(fit.zip)){
-    zip_pit <- fit.zip$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)],
+    zip_pit <- fit.zip$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     zip_pit <- NA
   }
