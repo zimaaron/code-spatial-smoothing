@@ -2,7 +2,7 @@
 ## set IO ##
 ############
 
-setwd("~/Dropbox/genetics/a-s-omics/")
+# setwd("~/Dropbox/genetics/a-s-omics/")
 i.d <- file.path(getwd(), "/data-inputs/mouse-embryo-raw")
 o.d <- file.path(getwd(), "/data-outputs/mouse-embryo-raw", Sys.Date())
 c.d <- file.path(getwd(), "/code-spatial-smoothing/raw-counts")
@@ -84,7 +84,7 @@ sub.bound <- splancs::as.points(matrix(c(15000, 25000, 25000, 15000, 15000,
 load(file.path(c.d, "features.to.use.2025-04-04.Robj"))
 f.to.mod <- to.use$gene
 
-f.to.drop <- c("a")
+f.to.drop <- c("a", "Calcb", "Cckar") # TODO, look into failure. better priors? also should add trycatch to both fit and predict
 f.to.mod <- setdiff(f.to.mod, f.to.drop)
 
 

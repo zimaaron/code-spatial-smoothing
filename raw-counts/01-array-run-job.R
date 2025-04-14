@@ -78,7 +78,7 @@ in.dom <- which(splancs::inout(mesh$loc[, 1:2], ds1))
 ## run model across selected features ##
 ########################################
 
-for(lr.n in f.to.mod){
+for(lr.n in f.to.mod[109:length(f.to.mod)]){
 
   cat('\n\n\n')
   for(i in 1:3){print(glue('ON FEAT: {lr.n}: {which(f.to.mod==lr.n)} of {length(f.to.mod)}\n'))}
