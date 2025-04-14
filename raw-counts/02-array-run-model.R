@@ -112,7 +112,7 @@ if(poi.mod){
     poi_pit <- NA
   }
 
-  if(class(pred.poi) != "try-catch"){
+  if(class(pred.poi[1]) != "try-catch"){
     # For Poisson, the posterior conditional variance is equal to
     # the posterior conditional mean, so no need to compute it separately.
     expect_poi <- pred.poi$expect
