@@ -89,7 +89,7 @@ if(poi.mod){
     message("Here's the original error message:")
     message(conditionMessage(cond))
     # Choose a return value in case of error
-    NA
+    NULL
   }
   )
 
@@ -118,17 +118,17 @@ if(poi.mod){
     message("Here's the original error message:")
     message(conditionMessage(cond))
     # Choose a return value in case of error
-    NA
+    NULL
   }
   )
 
-  if(!is.na(fit.poi)){
+  if(!is.null(fit.poi)){
     poi_pit <- fit.poi$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     poi_pit <- NA
   }
 
-  if(!is.na(pred.poi)){
+  if(!is.null(pred.poi)){
     # For Poisson, the posterior conditional variance is equal to
     # the posterior conditional mean, so no need to compute it separately.
     expect_poi <- pred.poi$expect
@@ -185,7 +185,7 @@ if(zip.mod){
     message("Here's the original error message:")
     message(conditionMessage(cond))
     # Choose a return value in case of error
-    NA
+    NULL
   }
   )
 
@@ -220,17 +220,17 @@ if(zip.mod){
     message("Here's the original error message:")
     message(conditionMessage(cond))
     # Choose a return value in case of error
-    NA
+    NULL
   }
   )
 
-  if(!is.na(fit.zip)){
+  if(!is.null(fit.zip)){
     zip_pit <- fit.zip$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     zip_pit <- NA
   }
 
-  if(!is.na(pred.zip)){
+  if(!is.null(pred.zip)){
     expect_zip <- pred.zip$expect
     expect_zip$pred_var <- pred.zip$variance$mean + expect_zip$sd^2
     expect_zip$log_score <- -log(pred.zip$obs_prob$mean)
@@ -308,7 +308,7 @@ if(zap.mod){
     message("Here's the original error message:")
     message(conditionMessage(cond))
     # Choose a return value in case of error
-    NA
+    NULL
   }
   )
 
@@ -346,16 +346,16 @@ if(zap.mod){
     message("Here's the original error message:")
     message(conditionMessage(cond))
     # Choose a return value in case of error
-    NA
+    NULL
   }
   )
 
-  if(!is.na(fit.zap)){
+  if(!is.null(fit.zap)){
     zap_pit <- rep(NA_real_, nrow(run.dat))
     zap_pit[run.dat$feat.count > 0] <- fit.zap$cpo$pit[-seq_len(nrow(run.dat))]
   }
 
-  if(!is.na(pred.zap)){
+  if(!is.null(pred.zap)){
     presence_zap <- pred.zap$presence
     expect_zap <- pred.zap$expect
     expect_zap$pred_var <- pred.zap$variance$mean + expect_zap$sd^2
@@ -483,7 +483,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-fixed-colors.png'))
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(!is.na(pred.poi)){
+if(!is.null(pred.poi)){
 
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
@@ -513,7 +513,7 @@ if(!is.na(pred.poi)){
   for(i in 1:4){ plot.new() }
 }
 
-if(!is.na(pred.zip)){
+if(!is.null(pred.zip)){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -542,7 +542,7 @@ if(!is.na(pred.zip)){
   for(i in 1:4){ plot.new() }
 }
 
-if(!is.na(pred.zap)){
+if(!is.null(pred.zap)){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -604,7 +604,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-free-colors.png')),
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(!is.na(pred.poi)){
+if(!is.null(pred.poi)){
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
                             1 - dpois(0, pred.poi$expect$mean),
@@ -633,7 +633,7 @@ if(!is.na(pred.poi)){
   for(i in 1:4){ plot.new() }
 }
 
-if(!is.na(pred.zip)){
+if(!is.null(pred.zip)){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -662,7 +662,7 @@ if(!is.na(pred.zip)){
   for(i in 1:4){ plot.new() }
 }
 
-if(!is.na(pred.zap)){
+if(!is.null(pred.zap)){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -778,17 +778,17 @@ dev.off()
 # save model comparison metrics
 fwrite(scores, file = file.path(o.d, glue("{lr.n}-scores.csv")))
 
-if(!is.na(pred.poi)){
+if(!is.null(pred.poi)){
   saveRDS(pred.poi, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-poi.rds')))
 }
 
-if(!is.na(pred.zip)){
+if(!is.null(pred.zip)){
   saveRDS(pred.zip, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zip.rds')))
 }
 
-if(!is.napred.zap){
+if(!is.nullpred.zap){
   saveRDS(pred.zap, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zap.rds')))
 }
