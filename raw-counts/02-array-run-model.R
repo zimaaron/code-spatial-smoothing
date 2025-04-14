@@ -739,7 +739,7 @@ if(class(pred.zip)[1] != "try-catch"){
                                      glue('{lr.n}-pred-zip.rds')))
 }
 
-if(class(pred.zap)[1] != "try-catch"{
+if(class(pred.zap)[1] != "try-catch"){
   saveRDS(pred.zap, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zap.rds')))
 }
