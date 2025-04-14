@@ -417,16 +417,22 @@ cat('\n')
 prob.zlim <- c(0, 1)
 prob.cols <- (magma(256))
 
-dens.zlim <- c(pred.poi$lambda$mean, pred.zip$lambda$mean,
-               pred.zap$lambda$mean, run.dat[, feat.count / total.count]) |> range(, na.rm = T)
+dens.zlim <- c(ifelse(class(pred.poi)[1] == "try-catch", NA, pred.poi$lambda$mean),
+               ifelse(class(pred.zip)[1] == "try-catch", NA, pred.zip$lambda$mean),
+               ifelse(class(pred.zap)[1] == "try-catch", NA, pred.zap$lambda$mean),
+               run.dat[, feat.count / total.count]) |> range(na.rm = T)
 dens.cols <- cividis(256)
 
-cnt.zlim <- c(pred.poi$expect$mean, pred.zip$expect$mean,
-              pred.zap$expect$mean, run.dat[, feat.count]) |> range(, na.rm = T)
+cnt.zlim <- c(ifelse(class(pred.poi)[1] == "try-catch", NA, pred.poi$expect$mean),
+              ifelse(class(pred.zip)[1] == "try-catch", NA, pred.zip$expect$mean),
+              ifelse(class(pred.zap)[1] == "try-catch", NA, pred.zap$expect$mean),
+              run.dat[, feat.count]) |> range(na.rm = T)
 cnt.cols <- viridis(256)
 
-res.zlim <- c(run.dat$feat.count - pred.poi$expect$mean, run.dat$feat.count - pred.zip$expect$mean,
-              run.dat$feat.count - pred.zap$expect$mean) |> range(, na.rm = T)
+res.zlim <- c(ifelse(class(pred.poi)[1] == "try-catch", NA, run.dat$feat.count - pred.poi$expect$mean),
+              ifelse(class(pred.zip)[1] == "try-catch", NA, run.dat$feat.count - pred.zip$expect$mean),
+              ifelse(class(pred.zap)[1] == "try-catch", NA, run.dat$feat.count - pred.zap$expect$mean),
+              run.dat[, feat.count / total.count]) |> range(na.rm = T)
 res.cols <- turbo(256)
 
 png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-fixed-colors.png')),
