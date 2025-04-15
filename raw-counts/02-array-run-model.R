@@ -106,13 +106,13 @@ if(poi.mod){
     )
   }, silent = T)
 
-  if(class(fit.poi)[1] != "try-catch"){
+  if(class(fit.poi)[1] != "try-error"){
     poi_pit <- fit.poi$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     poi_pit <- NA
   }
 
-  if(class(pred.poi[1]) != "try-catch"){
+  if(class(pred.poi[1]) != "try-error"){
     # For Poisson, the posterior conditional variance is equal to
     # the posterior conditional mean, so no need to compute it separately.
     expect_poi <- pred.poi$expect
@@ -192,13 +192,13 @@ if(zip.mod){
     )
   }, silent = T)
 
-  if(class(fit.zip)[1] != "try-catch"){
+  if(class(fit.zip)[1] != "try-error"){
     zip_pit <- fit.zip$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     zip_pit <- NA
   }
 
-  if(class(pred.zip)[1] != "try-catch"){
+  if(class(pred.zip)[1] != "try-error"){
     expect_zip <- pred.zip$expect
     expect_zip$pred_var <- pred.zip$variance$mean + expect_zip$sd^2
     expect_zip$log_score <- -log(pred.zip$obs_prob$mean)
@@ -301,12 +301,12 @@ if(zap.mod){
     )
   }, silent = T)
 
-  if(class(fit.zap)[1] != "try-catch"){
+  if(class(fit.zap)[1] != "try-error"){
     zap_pit <- rep(NA_real_, nrow(run.dat))
     zap_pit[run.dat$feat.count > 0] <- fit.zap$cpo$pit[-seq_len(nrow(run.dat))]
   }
 
-  if(class(pred.zap)[1] != "try-catch"){
+  if(class(pred.zap)[1] != "try-error"){
     presence_zap <- pred.zap$presence
     expect_zap <- pred.zap$expect
     expect_zap$pred_var <- pred.zap$variance$mean + expect_zap$sd^2
@@ -417,21 +417,21 @@ cat('\n')
 prob.zlim <- c(0, 1)
 prob.cols <- (magma(256))
 
-dens.zlim <- c(ifelse(class(pred.poi)[1] == "try-catch", NA, pred.poi$lambda$mean),
-               ifelse(class(pred.zip)[1] == "try-catch", NA, pred.zip$lambda$mean),
-               ifelse(class(pred.zap)[1] == "try-catch", NA, pred.zap$lambda$mean),
+dens.zlim <- c(ifelse(class(pred.poi)[1] == "try-error", NA, pred.poi$lambda$mean),
+               ifelse(class(pred.zip)[1] == "try-error", NA, pred.zip$lambda$mean),
+               ifelse(class(pred.zap)[1] == "try-error", NA, pred.zap$lambda$mean),
                run.dat[, feat.count / total.count]) |> range(na.rm = T)
 dens.cols <- cividis(256)
 
-cnt.zlim <- c(ifelse(class(pred.poi)[1] == "try-catch", NA, pred.poi$expect$mean),
-              ifelse(class(pred.zip)[1] == "try-catch", NA, pred.zip$expect$mean),
-              ifelse(class(pred.zap)[1] == "try-catch", NA, pred.zap$expect$mean),
+cnt.zlim <- c(ifelse(class(pred.poi)[1] == "try-error", NA, pred.poi$expect$mean),
+              ifelse(class(pred.zip)[1] == "try-error", NA, pred.zip$expect$mean),
+              ifelse(class(pred.zap)[1] == "try-error", NA, pred.zap$expect$mean),
               run.dat[, feat.count]) |> range(na.rm = T)
 cnt.cols <- viridis(256)
 
-res.zlim <- c(ifelse(class(pred.poi)[1] == "try-catch", NA, run.dat$feat.count - pred.poi$expect$mean),
-              ifelse(class(pred.zip)[1] == "try-catch", NA, run.dat$feat.count - pred.zip$expect$mean),
-              ifelse(class(pred.zap)[1] == "try-catch", NA, run.dat$feat.count - pred.zap$expect$mean),
+res.zlim <- c(ifelse(class(pred.poi)[1] == "try-error", NA, run.dat$feat.count - pred.poi$expect$mean),
+              ifelse(class(pred.zip)[1] == "try-error", NA, run.dat$feat.count - pred.zip$expect$mean),
+              ifelse(class(pred.zap)[1] == "try-error", NA, run.dat$feat.count - pred.zap$expect$mean),
               run.dat[, feat.count / total.count]) |> range(na.rm = T)
 res.cols <- turbo(256)
 
@@ -440,7 +440,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-fixed-colors.png'))
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(class(pred.poi)[1] != "try-catch"){
+if(class(pred.poi)[1] != "try-error"){
 
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
@@ -470,7 +470,7 @@ if(class(pred.poi)[1] != "try-catch"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zip)[1] != "try-catch"){
+if(class(pred.zip)[1] != "try-error"){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -499,7 +499,7 @@ if(class(pred.zip)[1] != "try-catch"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zap)[1] != "try-catch"){
+if(class(pred.zap)[1] != "try-error"){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -561,7 +561,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-free-colors.png')),
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(class(pred.poi)[1] != "try-catch"){
+if(class(pred.poi)[1] != "try-error"){
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
                             1 - dpois(0, pred.poi$expect$mean),
@@ -590,7 +590,7 @@ if(class(pred.poi)[1] != "try-catch"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zip)[1] != "try-catch"){
+if(class(pred.zip)[1] != "try-error"){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -619,7 +619,7 @@ if(class(pred.zip)[1] != "try-catch"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zap)[1] != "try-catch"){
+if(class(pred.zap)[1] != "try-error"){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -735,17 +735,17 @@ dev.off()
 # save model comparison metrics
 fwrite(scores, file = file.path(o.d, glue("{lr.n}-scores.csv")))
 
-if(class(pred.poi)[1] != "try-catch"){
+if(class(pred.poi)[1] != "try-error"){
   saveRDS(pred.poi, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-poi.rds')))
 }
 
-if(class(pred.zip)[1] != "try-catch"){
+if(class(pred.zip)[1] != "try-error"){
   saveRDS(pred.zip, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zip.rds')))
 }
 
-if(class(pred.zap)[1] != "try-catch"){
+if(class(pred.zap)[1] != "try-error"){
   saveRDS(pred.zap, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zap.rds')))
 }
