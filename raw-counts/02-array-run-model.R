@@ -70,49 +70,51 @@ if(poi.mod){
     E = total.count
   )
 
-  fit.poi <- try(
+  try(
   {
     cat('\n')
     for(i in 1){print(glue('{lr.n}: fitting poisson model'))}
     cat('\n')
 
-    bru(comps,
-        poi.lik,
-        # options
-        options = list(bru_verbose = 4,
-                       bru_max_iter = 1)
-        )
+    fit.poi <- bru(comps,
+                   poi.lik,
+                   # options
+                   options = list(bru_verbose = 4,
+                                  bru_max_iter = 1)
+                   )
 
   }, silent = T)
 
-  pred.poi <- try(
-  {
-    cat('\n')
-    for(i in 1){print(glue('{lr.n}: predicting from fitted poisson model'))}
-    cat('\n')
+  if(exists(fit.poi)){
+    try(
+    {
+      cat('\n')
+      for(i in 1){print(glue('{lr.n}: predicting from fitted poisson model'))}
+      cat('\n')
 
-    predict(
-      fit.poi, run.dat,
-      ~ {
-        lambda <- exp( feat.count.int + feat.count.field )
-        expect <- lambda * total.count
-        list(
-          lambda = lambda,
-          expect = expect,
-          obs_prob = dpois(feat.count, expect)
-        )
-      },
-      n.samples = n.samp
-    )
-  }, silent = T)
+      pred.poi <- predict(
+        fit.poi, run.dat,
+        ~ {
+          lambda <- exp( feat.count.int + feat.count.field )
+          expect <- lambda * total.count
+          list(
+            lambda = lambda,
+            expect = expect,
+            obs_prob = dpois(feat.count, expect)
+          )
+        },
+        n.samples = n.samp
+      )
+    }, silent = T)
+  }
 
-  if(class(fit.poi)[1] != "try-error"){
+  if(exists(fit.poi)){
     poi_pit <- fit.poi$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     poi_pit <- NA
   }
 
-  if(class(pred.poi[1]) != "try-error"){
+  if(exists(pred.poi)){
     # For Poisson, the posterior conditional variance is equal to
     # the posterior conditional mean, so no need to compute it separately.
     expect_poi <- pred.poi$expect
@@ -165,40 +167,42 @@ if(zip.mod){
 
   }, silent = T)
 
-  pred.zip <- try(
-  {
-    cat('\n')
-    for(i in 1){print(glue('{lr.n}:  predicting from fitted zip model'))}
-    cat('\n')
+  if(exists(fit.zip)){
+    try(
+    {
+      cat('\n')
+      for(i in 1){print(glue('{lr.n}:  predicting from fitted zip model'))}
+      cat('\n')
 
-    predict(
-      fit.zip, run.dat,
-      ~ {
-        scaling_prob <- (1 - zero_probability_parameter_for_zero_inflated_poisson_1)
-        lambda <- exp( feat.count.int + feat.count.field )
-        expect_param <- lambda * total.count
-        expect <- scaling_prob * expect_param
-        variance <- scaling_prob * expect_param *
-          (1 + (1 - scaling_prob) * expect_param)
-        list(
-          lambda = lambda,
-          expect = expect,
-          variance = variance,
-          obs_prob = (1 - scaling_prob) * (feat.count == 0) +
-            scaling_prob * dpois(feat.count, expect_param)
-        )
-      },
-      n.samples = n.samp
-    )
-  }, silent = T)
+      pred.zip <- predict(
+        fit.zip, run.dat,
+        ~ {
+          scaling_prob <- (1 - zero_probability_parameter_for_zero_inflated_poisson_1)
+          lambda <- exp( feat.count.int + feat.count.field )
+          expect_param <- lambda * total.count
+          expect <- scaling_prob * expect_param
+          variance <- scaling_prob * expect_param *
+            (1 + (1 - scaling_prob) * expect_param)
+          list(
+            lambda = lambda,
+            expect = expect,
+            variance = variance,
+            obs_prob = (1 - scaling_prob) * (feat.count == 0) +
+              scaling_prob * dpois(feat.count, expect_param)
+          )
+        },
+        n.samples = n.samp
+      )
+    }, silent = T)
+  }
 
-  if(class(fit.zip)[1] != "try-error"){
+  if(exists(fit.zip)){
     zip_pit <- fit.zip$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     zip_pit <- NA
   }
 
-  if(class(pred.zip)[1] != "try-error"){
+  if(exists(pred.zip)){
     expect_zip <- pred.zip$expect
     expect_zip$pred_var <- pred.zip$variance$mean + expect_zip$sd^2
     expect_zip$log_score <- -log(pred.zip$obs_prob$mean)
@@ -257,56 +261,58 @@ if(zap.mod){
     formula = feat.present ~ feat.present.int + feat.present.field
   )
 
-  fit.zap <- try(
+  try(
   {
     cat('\n')
     for(i in 1){print(glue('{lr.n}: fitting zap model'))}
     cat('\n')
 
-    bru(comps,
-        zap.feat.lik,
-        zap.pres.lik,
-        # options
-        options = list(bru_verbose = 4,
-                       bru_max_iter = 1)
-        )
+    fit.zap <- bru(comps,
+                   zap.feat.lik,
+                   zap.pres.lik,
+                   # options
+                   options = list(bru_verbose = 4,
+                                  bru_max_iter = 1)
+                   )
   }, silent = T)
 
-  pred.zap <- try(
-  {
-    cat('\n')
-    for(i in 1){print(glue('{lr.n}: predicting from fitted zap model'))}
-    cat('\n')
+  if(exists(fit.zap)){
+    try(
+    {
+      cat('\n')
+      for(i in 1){print(glue('{lr.n}: predicting from fitted zap model'))}
+      cat('\n')
 
-    predict(
-      fit.zap,
-      run.dat,
-      ~ {
-        presence_prob <- plogis( feat.present.int + feat.present.field )
-        lambda <- exp(feat.count.int + feat.count.field)
-        expect_param <- presence_prob * lambda * total.count
-        expect <- expect_param / (1 - exp(-lambda * total.count))
-        variance <- expect * (1 - exp(-lambda * total.count) * expect)
-        list(
-          presence = presence_prob,
-          lambda = lambda,
-          expect = expect,
-          variance = variance,
-          obs_prob = (1 - presence_prob) * (feat.count == 0) +
-            (feat.count > 0) * presence_prob * dpois(feat.count, expect_param) /
-            (1 - dpois(0, expect_param))
-        )
-      },
-      n.samples = n.samp
-    )
-  }, silent = T)
+      pred.zap <- predict(
+        fit.zap,
+        run.dat,
+        ~ {
+          presence_prob <- plogis( feat.present.int + feat.present.field )
+          lambda <- exp(feat.count.int + feat.count.field)
+          expect_param <- presence_prob * lambda * total.count
+          expect <- expect_param / (1 - exp(-lambda * total.count))
+          variance <- expect * (1 - exp(-lambda * total.count) * expect)
+          list(
+            presence = presence_prob,
+            lambda = lambda,
+            expect = expect,
+            variance = variance,
+            obs_prob = (1 - presence_prob) * (feat.count == 0) +
+              (feat.count > 0) * presence_prob * dpois(feat.count, expect_param) /
+              (1 - dpois(0, expect_param))
+          )
+        },
+        n.samples = n.samp
+      )
+    }, silent = T)
+  }
 
-  if(class(fit.zap)[1] != "try-error"){
+  if(exists(fit.zap)){
     zap_pit <- rep(NA_real_, nrow(run.dat))
     zap_pit[run.dat$feat.count > 0] <- fit.zap$cpo$pit[-seq_len(nrow(run.dat))]
   }
 
-  if(class(pred.zap)[1] != "try-error"){
+  if(exists(pred.zap)){
     presence_zap <- pred.zap$presence
     expect_zap <- pred.zap$expect
     expect_zap$pred_var <- pred.zap$variance$mean + expect_zap$sd^2
@@ -417,21 +423,21 @@ cat('\n')
 prob.zlim <- c(0, 1)
 prob.cols <- (magma(256))
 
-dens.zlim <- c(ifelse(class(pred.poi)[1] == "try-error", NA, pred.poi$lambda$mean),
-               ifelse(class(pred.zip)[1] == "try-error", NA, pred.zip$lambda$mean),
-               ifelse(class(pred.zap)[1] == "try-error", NA, pred.zap$lambda$mean),
+dens.zlim <- c(ifelse(exists(pred.poi), NA, pred.poi$lambda$mean),
+               ifelse(exists(pred.zip), NA, pred.zip$lambda$mean),
+               ifelse(exists(pred.zap), NA, pred.zap$lambda$mean),
                run.dat[, feat.count / total.count]) |> range(na.rm = T)
 dens.cols <- cividis(256)
 
-cnt.zlim <- c(ifelse(class(pred.poi)[1] == "try-error", NA, pred.poi$expect$mean),
-              ifelse(class(pred.zip)[1] == "try-error", NA, pred.zip$expect$mean),
-              ifelse(class(pred.zap)[1] == "try-error", NA, pred.zap$expect$mean),
+cnt.zlim <- c(ifelse(exists(pred.poi), NA, pred.poi$expect$mean),
+              ifelse(exists(pred.zip), NA, pred.zip$expect$mean),
+              ifelse(exists(pred.zap), NA, pred.zap$expect$mean),
               run.dat[, feat.count]) |> range(na.rm = T)
 cnt.cols <- viridis(256)
 
-res.zlim <- c(ifelse(class(pred.poi)[1] == "try-error", NA, run.dat$feat.count - pred.poi$expect$mean),
-              ifelse(class(pred.zip)[1] == "try-error", NA, run.dat$feat.count - pred.zip$expect$mean),
-              ifelse(class(pred.zap)[1] == "try-error", NA, run.dat$feat.count - pred.zap$expect$mean),
+res.zlim <- c(ifelse(exists(pred.poi), NA, run.dat$feat.count - pred.poi$expect$mean),
+              ifelse(exists(pred.zip), NA, run.dat$feat.count - pred.zip$expect$mean),
+              ifelse(exists(pred.zap), NA, run.dat$feat.count - pred.zap$expect$mean),
               run.dat[, feat.count / total.count]) |> range(na.rm = T)
 res.cols <- turbo(256)
 
@@ -440,7 +446,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-fixed-colors.png'))
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(class(pred.poi)[1] != "try-error"){
+if(exists(pred.poi)){
 
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
@@ -470,7 +476,7 @@ if(class(pred.poi)[1] != "try-error"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zip)[1] != "try-error"){
+if(exists(pred.zip)){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -499,7 +505,7 @@ if(class(pred.zip)[1] != "try-error"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zap)[1] != "try-error"){
+if(exists(pred.zap)){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -561,7 +567,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-free-colors.png')),
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(class(pred.poi)[1] != "try-error"){
+if(exists(pred.poi)){
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
                             1 - dpois(0, pred.poi$expect$mean),
@@ -590,7 +596,7 @@ if(class(pred.poi)[1] != "try-error"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zip)[1] != "try-error"){
+if(exists(pred.zip)){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -619,7 +625,7 @@ if(class(pred.zip)[1] != "try-error"){
   for(i in 1:4){ plot.new() }
 }
 
-if(class(pred.zap)[1] != "try-error"){
+if(exists(pred.zap)){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -735,17 +741,17 @@ dev.off()
 # save model comparison metrics
 fwrite(scores, file = file.path(o.d, glue("{lr.n}-scores.csv")))
 
-if(class(pred.poi)[1] != "try-error"){
+if(exists(pred.poi)){
   saveRDS(pred.poi, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-poi.rds')))
 }
 
-if(class(pred.zip)[1] != "try-error"){
+if(exists(pred.zip)){
   saveRDS(pred.zip, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zip.rds')))
 }
 
-if(class(pred.zap)[1] != "try-error"){
+if(exists(pred.zap)){
   saveRDS(pred.zap, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zap.rds')))
 }
