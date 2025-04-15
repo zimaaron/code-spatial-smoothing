@@ -73,7 +73,7 @@ if(poi.mod){
   fit.poi <- try(
   {
     cat('\n')
-    for(i in 1){print(glue('-- fitting poisson model'))}
+    for(i in 1){print(glue('{lr.n}: fitting poisson model'))}
     cat('\n')
 
     bru(comps,
@@ -88,7 +88,7 @@ if(poi.mod){
   pred.poi <- try(
   {
     cat('\n')
-    for(i in 1){print(glue('---- predicting from fitted poisson model'))}
+    for(i in 1){print(glue('{lr.n}: predicting from fitted poisson model'))}
     cat('\n')
 
     predict(
@@ -153,7 +153,7 @@ if(zip.mod){
   fit.zip <- try(
   {
     cat('\n')
-    for(i in 1){print(glue('-- fitting zip model'))}
+    for(i in 1){print(glue('{lr.n}: fitting zip model'))}
     cat('\n')
 
     bru(comps,
@@ -168,7 +168,7 @@ if(zip.mod){
   pred.zip <- try(
   {
     cat('\n')
-    for(i in 1){print(glue('---- predicting from fitted zip model'))}
+    for(i in 1){print(glue('{lr.n}:  predicting from fitted zip model'))}
     cat('\n')
 
     predict(
@@ -260,7 +260,7 @@ if(zap.mod){
   fit.zap <- try(
   {
     cat('\n')
-    for(i in 1){print(glue('-- fitting zap model'))}
+    for(i in 1){print(glue('{lr.n}: fitting zap model'))}
     cat('\n')
 
     bru(comps,
@@ -275,7 +275,7 @@ if(zap.mod){
   pred.zap <- try(
   {
     cat('\n')
-    for(i in 1){print(glue('---- predicting from fitted zap model'))}
+    for(i in 1){print(glue('{lr.n}: predicting from fitted zap model'))}
     cat('\n')
 
     predict(
@@ -324,7 +324,7 @@ if(zap.mod){
 ## model comparison
 ######################
 cat('\n')
-for(i in 1){print(glue('-- model comparison'))}
+for(i in 1){print(glue('{lr.n}:  model comparison'))}
 cat('\n')
 
 comp.df <- data.frame(
@@ -409,7 +409,7 @@ knitr::kable(scores)
 ## TODO then, update save outputs section, and run
 
 cat('\n')
-for(i in 1){print(glue('-- making plots'))}
+for(i in 1){print(glue('{lr.n}:  making plots'))}
 cat('\n')
 
 ## first make plots with constant color range per column
@@ -721,7 +721,7 @@ dev.off()
 
 
 cat('\n')
-for(i in 1){print(glue('-- saving outputs'))}
+for(i in 1){print(glue('{lr.n}:  saving outputs'))}
 cat('\n')
 ## saving each fit objects takes up about 2gb!
 ## saveRDS(fit.pois.pois, file = file.path(o.d, "fitted-models",
