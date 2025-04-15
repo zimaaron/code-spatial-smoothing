@@ -85,7 +85,7 @@ if(poi.mod){
 
   }, silent = T)
 
-  if(exists(fit.poi)){
+  if(exists("fit.poi")){
     try(
     {
       cat('\n')
@@ -108,13 +108,13 @@ if(poi.mod){
     }, silent = T)
   }
 
-  if(exists(fit.poi)){
+  if(exists("fit.poi")){
     poi_pit <- fit.poi$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     poi_pit <- NA
   }
 
-  if(exists(pred.poi)){
+  if(exists("pred.poi")){
     # For Poisson, the posterior conditional variance is equal to
     # the posterior conditional mean, so no need to compute it separately.
     expect_poi <- pred.poi$expect
@@ -167,7 +167,7 @@ if(zip.mod){
 
   }, silent = T)
 
-  if(exists(fit.zip)){
+  if(exists("fit.zip")){
     try(
     {
       cat('\n')
@@ -196,13 +196,13 @@ if(zip.mod){
     }, silent = T)
   }
 
-  if(exists(fit.zip)){
+  if(exists("fit.zip")){
     zip_pit <- fit.zip$cpo$pit * c(NA_real_, 1)[1 + (run.dat$feat.count > 0)]
   }else{
     zip_pit <- NA
   }
 
-  if(exists(pred.zip)){
+  if(exists("pred.zip")){
     expect_zip <- pred.zip$expect
     expect_zip$pred_var <- pred.zip$variance$mean + expect_zip$sd^2
     expect_zip$log_score <- -log(pred.zip$obs_prob$mean)
@@ -276,7 +276,7 @@ if(zap.mod){
                    )
   }, silent = T)
 
-  if(exists(fit.zap)){
+  if(exists("fit.zap")){
     try(
     {
       cat('\n')
@@ -307,12 +307,12 @@ if(zap.mod){
     }, silent = T)
   }
 
-  if(exists(fit.zap)){
+  if(exists("fit.zap")){
     zap_pit <- rep(NA_real_, nrow(run.dat))
     zap_pit[run.dat$feat.count > 0] <- fit.zap$cpo$pit[-seq_len(nrow(run.dat))]
   }
 
-  if(exists(pred.zap)){
+  if(exists("pred.zap")){
     presence_zap <- pred.zap$presence
     expect_zap <- pred.zap$expect
     expect_zap$pred_var <- pred.zap$variance$mean + expect_zap$sd^2
@@ -423,21 +423,21 @@ cat('\n')
 prob.zlim <- c(0, 1)
 prob.cols <- (magma(256))
 
-dens.zlim <- c(ifelse(exists(pred.poi), NA, pred.poi$lambda$mean),
-               ifelse(exists(pred.zip), NA, pred.zip$lambda$mean),
-               ifelse(exists(pred.zap), NA, pred.zap$lambda$mean),
+dens.zlim <- c(ifelse(exists("pred.poi"), NA, pred.poi$lambda$mean),
+               ifelse(exists("pred.zip"), NA, pred.zip$lambda$mean),
+               ifelse(exists("pred.zap"), NA, pred.zap$lambda$mean),
                run.dat[, feat.count / total.count]) |> range(na.rm = T)
 dens.cols <- cividis(256)
 
-cnt.zlim <- c(ifelse(exists(pred.poi), NA, pred.poi$expect$mean),
-              ifelse(exists(pred.zip), NA, pred.zip$expect$mean),
-              ifelse(exists(pred.zap), NA, pred.zap$expect$mean),
+cnt.zlim <- c(ifelse(exists("pred.poi"), NA, pred.poi$expect$mean),
+              ifelse(exists("pred.zip"), NA, pred.zip$expect$mean),
+              ifelse(exists("pred.zap"), NA, pred.zap$expect$mean),
               run.dat[, feat.count]) |> range(na.rm = T)
 cnt.cols <- viridis(256)
 
-res.zlim <- c(ifelse(exists(pred.poi), NA, run.dat$feat.count - pred.poi$expect$mean),
-              ifelse(exists(pred.zip), NA, run.dat$feat.count - pred.zip$expect$mean),
-              ifelse(exists(pred.zap), NA, run.dat$feat.count - pred.zap$expect$mean),
+res.zlim <- c(ifelse(exists("pred.poi"), NA, run.dat$feat.count - pred.poi$expect$mean),
+              ifelse(exists("pred.zip"), NA, run.dat$feat.count - pred.zip$expect$mean),
+              ifelse(exists("pred.zap"), NA, run.dat$feat.count - pred.zap$expect$mean),
               run.dat[, feat.count / total.count]) |> range(na.rm = T)
 res.cols <- turbo(256)
 
@@ -446,7 +446,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-fixed-colors.png'))
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(exists(pred.poi)){
+if(exists("pred.poi")){
 
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
@@ -476,7 +476,7 @@ if(exists(pred.poi)){
   for(i in 1:4){ plot.new() }
 }
 
-if(exists(pred.zip)){
+if(exists("pred.zip")){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -505,7 +505,7 @@ if(exists(pred.zip)){
   for(i in 1:4){ plot.new() }
 }
 
-if(exists(pred.zap)){
+if(exists("pred.zap")){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -567,7 +567,7 @@ png(file.path(o.d, glue('{lr.n}-model-prediction-comparisons-free-colors.png')),
 par(mfrow = c(4, 4),
     mai = c(.62, 0.82, .62, 1.22))
 
-if(exists(pred.poi)){
+if(exists("pred.poi")){
   fields.style();quilt.plot(pred.poi$expect$x,
                             pred.poi$expect$y,
                             1 - dpois(0, pred.poi$expect$mean),
@@ -596,7 +596,7 @@ if(exists(pred.poi)){
   for(i in 1:4){ plot.new() }
 }
 
-if(exists(pred.zip)){
+if(exists("pred.zip")){
   fields.style();quilt.plot(pred.zip$expect$x,
                             pred.zip$expect$y,
                             1 - dpois(0, pred.zip$expect$mean),
@@ -625,7 +625,7 @@ if(exists(pred.zip)){
   for(i in 1:4){ plot.new() }
 }
 
-if(exists(pred.zap)){
+if(exists("pred.zap")){
   fields.style();quilt.plot(pred.zap$expect$x,
                             pred.zap$expect$y,
                             1 - dpois(0, pred.zap$expect$mean),
@@ -741,17 +741,17 @@ dev.off()
 # save model comparison metrics
 fwrite(scores, file = file.path(o.d, glue("{lr.n}-scores.csv")))
 
-if(exists(pred.poi)){
+if(exists("pred.poi")){
   saveRDS(pred.poi, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-poi.rds')))
 }
 
-if(exists(pred.zip)){
+if(exists("pred.zip")){
   saveRDS(pred.zip, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zip.rds')))
 }
 
-if(exists(pred.zap)){
+if(exists("pred.zap")){
   saveRDS(pred.zap, file = file.path(o.d, "prediction-objects",
                                      glue('{lr.n}-pred-zap.rds')))
 }
